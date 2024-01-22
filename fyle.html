@@ -20,6 +20,7 @@
             <label for="username" class="mb-2 mr-sm-2">Github username:</label>
             <input type="text" class="form-control mb-2 mr-sm-2 col-md-3 col-sm-4 col-lg-2 mx-4" id="username"
                 placeholder="Enter username" name="username">
+                <p class="text-danger" id="no-repo"> User doesn't have any repositories</p>
             <p class="text-danger" id="invalid-user"> Username not found in Github, please enter correct username</p>
             <button type="button" class="btn btn-primary mb-2 col-md-3 col-sm-4 col-lg-2"
                 id="btn-find-repositories">Find repositories</button>
@@ -50,14 +51,23 @@
     var isFetching = true;
     var username = '';
 
+    function createTopics(topics) {
+        var topicTemplate = '';
+        topics.forEach(topic => {
+            debugger;
+            topicTemplate = topicTemplate +  `<a href="#" class="card-link mx-2">${topic}</a>`
+        }); 
+        return topicTemplate;
+    }
+
     function createCard(repo) {
         var cardTemplate =
             `<div class= "col-md-6 col-sm-12 col-lg-4" >
             <div class="card-body">
                 <h5 class="card-title text-primary fs-6">${repo.name}</h5>
                 <p class="card-text mt-2">${repo.description || ''}</p>
-                <a href="#" class="card-link">${repo.language}</a>
-                <a href="#" class="card-link">${repo.stargazers_count}</a>
+                ${createTopics(repo.topics)}
+                </div>
             </div>
         </div >`
         return $(cardTemplate);
@@ -120,7 +130,6 @@
         var fetchUrl = `https://api.github.com/users/${username}`;
 
         fetch(fetchUrl).then(function (res) {
-            debugger;
             if (!res.ok) {
                 $('#user-container').hide();
                 return;
@@ -136,6 +145,7 @@
     }
 
     function renderRepos() {
+        debugger;
         $("#repositories-container").hide();
         $("#loader").show();
 
@@ -143,7 +153,6 @@
         fetchUrl = isFirstLoad ? fetchUrl : `${fetchUrl}?page=${pageNumber}&per_page=${perPage}`;
 
         fetch(fetchUrl).then(function (res) {
-            debugger;
             if (!res.ok) {
                 $("#invalid-user").show();
                 $("#loader").hide();
@@ -152,11 +161,15 @@
             }
             return res.json();
         }).then(repositories => {
-            if (!repositories) return;
-            debugger;
+            if (!repositories || !repositories.length) {
+                $("#loader").hide();  
+                $("#no-repo").show();  
+                return;  
+            } 
             $("#loader").hide();
             $("#repositories-container").show();
             $("#invalid-user").hide();
+            $("#no-repo").hide();
 
             var repos = $();
             if (isFirstLoad) {
@@ -167,8 +180,8 @@
             }
 
             if (TotalPageCount) {
-                repositories.forEach(function (item, i) {
-                    repos = repos.add(createCard(item));
+                repositories.forEach(function (repo, i) {
+                    repos = repos.add(createCard(repo));
                 });
                 // Add them to the page... for instance the <body>
                 $(function () {
@@ -176,12 +189,17 @@
                 });
                 renderPagination()
             }
-        })
+            isFirstLoad = false;
+        }).catch((error) => {
+            console.log(error)
+        });
     }
 
     $(document).ready(function () {
         $("#loader").hide();
         $("#invalid-user").hide();
+        $("#no-repo").hide();
+        
 
 
         $('#username').change(function () {
@@ -190,12 +208,13 @@
 
         $('#btn-find-repositories').click(function () {
             if (username) {
-                getUser();
+                pageNumber = 1;
+                isFirstLoad = true;
+                // getUser();
                 renderRepos();
             }
         });
         $("#pagination").click(function () {
-            debugger;
             var selectedPage = event.target.text;
             if (!selectedPage) {
                 return;
@@ -260,7 +279,7 @@
         width: auto;
     }
 
-    #invalid-user {
+    #invalid-user, #no-repo {
         text-align: center;
     }
 
